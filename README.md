@@ -1,6 +1,7 @@
 # rabin-experiment
 
-experiment to evaluate the practicality of rabin finger prints as a strategy for efficient file replication.
+experiment to evaluate the practicality of rabin finger prints as a strategy for efficient file replication,
+particularily in the usecase of a package manager or version control system.
 
 ## motivation
 
