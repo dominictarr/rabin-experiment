@@ -202,15 +202,102 @@ wordwrap, 15244, 113630, 0.1341547126639092, true
 scuttlebot, 869787, 16745210, 0.05194243607574942, true
 ```
 
+## experiment 7, vary bitfield size
+
+The default settings may not be ideal, so try varying the number of bits
+rabin uses to make a split.
+
+## results
+
+``` csv
+bits, module, versions, reduced size, total size, ration, smaller, blocks, unique, average block size
+8, tape, 11, 271851, 1306112, 0.20813758697569582, true, 9120, 1429, 143.2140350877193
+9, tape, 11, 298050, 1306112, 0.22819635682085457, true, 7604, 1140, 171.76643871646502
+10, tape, 11, 348800, 1306112, 0.26705213641709136, true, 6630, 974, 197.0003016591252
+11, tape, 11, 448128, 1306112, 0.3431007448059584, true, 3676, 916, 355.3079434167573
+12, tape, 11, 640453, 1306112, 0.49035075093100744, true, 2356, 907, 554.376910016978
+13, tape, 11, 856408, 1306112, 0.6556926205409643, true, 1335, 806, 978.3610486891386
+14, tape, 11, 1065670, 1306112, 0.8159101210309683, true, 698, 533, 1871.220630372493
+15, tape, 11, 1140290, 1306112, 0.8730415155821246, true, 445, 376, 2935.083146067416
+16, tape, 11, 1183041, 1306112, 0.9057730118090944, true, 259, 229, 5042.9034749034745
+```
+
 tape and scuttlebot are only 5% the full size when represented as compressed
 diffs.
+
+with catfiles
+
+``` csv
+bits, module, versions, reduced size, total size, ration, smaller, blocks, unique, average block size
+8, tape, 11, 247849, 851136, 0.29119788141965564, true, 3186, 811, 267.14877589453863
+9, tape, 11, 304648, 851136, 0.35793104744717646, true, 1620, 488, 525.3925925925926
+10, tape, 11, 468849, 851136, 0.5508508628468306, true, 643, 278, 1323.6951788491447
+11, tape, 11, 612576, 851136, 0.7197157681028649, true, 380, 206, 2239.8315789473686
+12, tape, 11, 700647, 851136, 0.8231904184525152, true, 153, 102, 5562.980392156863
+13, tape, 11, 772262, 851136, 0.9073309083389729, true, 65, 55, 13094.4
+14, tape, 11, 851136, 851136, 1, false, 28, 28, 30397.714285714286
+15, tape, 11, 851136, 851136, 1, false, 11, 11, 77376
+16, tape, 11, 851136, 851136, 1, false, 11, 11, 77376
+```
+
+by looking at the ratio column we see that smaller blocks greatly improve
+the chance of finding non-unique blocks, but unfortunately, smaller
+blocks do not compress as well!
+
+with compressed catfiles
+
+``` csv
+bits, module, versions, reduced size, total size, ration, smaller, blocks, unique, average block size
+8, tape, 11, 138783, 158636, 0.8748518621246123, true, 3185, 814, 267.2326530612245
+9, tape, 11, 139468, 158632, 0.8791920923899339, true, 1620, 493, 525.3925925925926
+10, tape, 11, 152392, 158632, 0.960663674416259, true, 642, 277, 1325.7570093457944
+11, tape, 11, 172719, 158635, 1.0887824250638258, false, 380, 205, 2239.8315789473686
+12, tape, 11, 174152, 158631, 1.0978434227862146, false, 153, 102, 5562.980392156863
+13, tape, 11, 176473, 158630, 1.1124818760637962, false, 65, 54, 13094.4
+14, tape, 11, 173212, 158633, 1.0919039544104947, false, 28, 28, 30397.714285714286
+15, tape, 11, 158634, 158634, 1, false, 11, 11, 77376
+16, tape, 11, 158626, 158626, 1, false, 11, 11, 77376
+```
+
+Again, splitting into chunks does not help us if we must compress each chunk,
+whether we have small or large chunks.
+
+## experiment 8. compress after chunking, take into account block metadata.
+
+if we could store the files uncompressed, but compress the replication stream
+as we sent them then we should get good compression, as well as the saving
+from repeated blocks. if we assume a typical compression to 30%, and
+get an additional 50% reduction with approx 1k sized chunks, then we'd
+have only need 15% of the total reduced size. that would be comparable
+to the high end of the diff based experiment.
+
+but to compare these designs fairly, we need to also model the overheads
+required. for the diff based replication, to get an occasional snapshot,
+we still need the interviening diffs. To replicate rabin chunks, we
+need metadata about the valid chunks. That metadata needs to include
+the hashes of those chunks. Since a sha256 hash is 32 bytes, this can
+becomes significant for smaller chunk sizes, since to get good
+reduction we need thousands of chunks.
+
+The simplest way to represent the chunk hashes is a hash list.
+all the chunks are appended, and then the hash of that list is the root hash.
+(this approach is used by bittorrent). The alternative is to use
+a merkle tree. A merkle tree is interesting because you can provide a compact
+proof that any one block is part of the file. That would make it quite
+useful for things like streaming video. On the other hand, you need
+twice as many hashes to make a merkle tree than you do to make a hash list.
+
+However, merkle trees give us the opportunity to reuse branches of the tree.
+We may not need to replicate branches of the tree if we already know
+the hash of that branch! But how likely are we to see repeats, and will
+the overhead of the hashes outweigh the reduction from a smaller chunk size?
+
+TODO
 
 ## TODO
 
 * currently tables have been generated by editing run.sh and rerunning.
   rewrite so it's possbile to rerun every experiment.
-* I more recently realized more matching blocks where found if the size is smaller.
-  do an experiment where the block size is varied, and measure performance.
 * to replicate the chunks we need either a hashlist or a merkle tree. take this into account when comparing reduction strategies.
 * replace the tables with graphs
 * the packages in my cache are not all the versions of that package.
@@ -220,5 +307,7 @@ diffs.
 ## License
 
 MIT
+
+
 
 
