@@ -19,6 +19,12 @@ to be the same, even after an insertion.
 
 But how well does this compare to the approaches of npm or git in practice?
 
+## NOTE
+
+I recently realized the default settings of `rabin` don't produce very
+good reductions, but if you adjust them you find many more matching blocks.
+(however I need to rewrite the following experiments to present that better)
+
 ## experiment 1 - rabin vs npm
 
 Take multiple versions of some npm package, and split it up with
@@ -213,4 +219,5 @@ diffs.
 ## License
 
 MIT
+
 
